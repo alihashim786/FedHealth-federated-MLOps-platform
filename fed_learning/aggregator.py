@@ -77,8 +77,13 @@ class SecureAggregator:
         first_state = client_models[0].state_dict()
         
         for param_name in first_state.keys():
+            # Non-float buffers (e.g. BatchNorm num_batches_tracked) can't be averaged
+            if not torch.is_floating_point(first_state[param_name]):
+                aggregated_state[param_name] = first_state[param_name].clone()
+                continue
+
             aggregated_param = torch.zeros_like(first_state[param_name])
-            
+
             for model, weight in zip(client_models, client_weights):
                 param = model.state_dict()[param_name]
                 

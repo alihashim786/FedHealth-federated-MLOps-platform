@@ -144,12 +144,17 @@ class FedAIRServer:
         first_model_state = client_models[0].state_dict()
         
         for param_name in first_model_state.keys():
+            # Non-float buffers (e.g. BatchNorm num_batches_tracked) can't be averaged
+            if not torch.is_floating_point(first_model_state[param_name]):
+                aggregated_state[param_name] = first_model_state[param_name].clone()
+                continue
+
             # Weighted average of parameters
             aggregated_param = torch.zeros_like(first_model_state[param_name])
-            
+
             for model, weight in zip(client_models, client_weights):
                 aggregated_param += weight * model.state_dict()[param_name]
-            
+
             aggregated_state[param_name] = aggregated_param
         
         # Update global model
@@ -190,9 +195,14 @@ class FedAIRServer:
         global_state = global_model.state_dict()
         
         for param_name in first_model_state.keys():
+            # Non-float buffers (e.g. BatchNorm num_batches_tracked) can't be averaged
+            if not torch.is_floating_point(first_model_state[param_name]):
+                aggregated_state[param_name] = first_model_state[param_name].clone()
+                continue
+
             # Weighted average with proximal term
             aggregated_param = torch.zeros_like(first_model_state[param_name])
-            
+
             for model, weight in zip(client_models, client_weights):
                 client_param = model.state_dict()[param_name]
                 global_param = global_state[param_name]
