@@ -1,0 +1,174 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fedair
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fedair-server
+  namespace: fedair
+  labels:
+    app: fedair-server
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fedair-server
+  template:
+    metadata:
+      labels:
+        app: fedair-server
+    spec:
+      containers:
+      - name: fedair-server
+        image: fedair-server:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: MLFLOW_TRACKING_URI
+          value: "http://mlflow-service:5000"
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        volumeMounts:
+        - name: model-storage
+          mountPath: /app/models
+        - name: output-storage
+          mountPath: /app/outputs
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: fedair-models-pvc
+      - name: output-storage
+        persistentVolumeClaim:
+          claimName: fedair-outputs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fedair-server-service
+  namespace: fedair
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: fedair-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fedair-dashboard
+  namespace: fedair
+  labels:
+    app: fedair-dashboard
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fedair-dashboard
+  template:
+    metadata:
+      labels:
+        app: fedair-dashboard
+    spec:
+      containers:
+      - name: dashboard
+        image: fedair-dashboard:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8501
+          name: http
+        env:
+        - name: SERVER_PORT
+          value: "8501"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        volumeMounts:
+        - name: data-storage
+          mountPath: /app/data
+      volumes:
+      - name: data-storage
+        persistentVolumeClaim:
+          claimName: fedair-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fedair-dashboard-service
+  namespace: fedair
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8501
+    targetPort: 8501
+    protocol: TCP
+    name: http
+  selector:
+    app: fedair-dashboard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fedair-models-pvc
+  namespace: fedair
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fedair-outputs-pvc
+  namespace: fedair
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fedair-data-pvc
+  namespace: fedair
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+
