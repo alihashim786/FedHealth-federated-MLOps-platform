@@ -17,10 +17,10 @@ pip install -r requirements.txt
 
 ## Step 2: Verify Data Location
 
-Check that your data is at the path specified in `utils/config.py`:
-```python
-DATA_ROOT = Path(r"C:\Users\zayan\Downloads\kvgwcrbjm3-1\kvgwcrbjm3-1\pollutant\pollutant")
-```
+Place the dataset at `data/pollutant/` inside the project (default), or point the
+`FEDAIR_DATA_ROOT` environment variable to your dataset folder.
+
+Download: [Hourly Air Pollution Data — Nanjing (9 Stations), Mendeley Data](https://data.mendeley.com/datasets/kvgwcrbjm3/1)
 
 You should see 9 CSV files (one per station):
 - CCM.csv
@@ -96,7 +96,7 @@ Open: http://localhost:8501 (or different port if first is running)
 **Solution**: Make sure you're running from the project root directory.
 
 ### Issue: "File not found" for CSV files
-**Solution**: Update `DATA_ROOT` in `utils/config.py` to your actual data path.
+**Solution**: Put the CSVs in `data/pollutant/` or set `FEDAIR_DATA_ROOT` to your data path.
 
 ### Issue: CUDA out of memory
 **Solution**: Reduce batch size in `FEDERATED_CONFIG["batch_size"]` or use CPU by setting `TRAINING_CONFIG["device"] = "cpu"`.
